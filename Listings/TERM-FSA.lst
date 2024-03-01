@@ -1,0 +1,227 @@
+C51 COMPILER V8.02   TERM_FSA                                                              03/05/2023 12:07:30 PAGE 1   
+
+
+C51 COMPILER V8.02, COMPILATION OF MODULE TERM_FSA
+OBJECT MODULE PLACED IN .\Objects\TERM-FSA.obj
+COMPILER INVOKED BY: C:\Keil\C51\BIN\C51.EXE TERM-FSA.c LARGE BROWSE INCDIR(.\BIG8051\Include) DEBUG OBJECTEXTEND PRINT(
+                    -.\Listings\TERM-FSA.lst) TABS(3) OBJECT(.\Objects\TERM-FSA.obj)
+
+line level    source
+
+   1          #include <c8051F040.h>                 // declaratii SFR
+   2          #include <osc.h>
+   3          #include <Protocol.h>
+   4          #include <uart0.h>
+   5          #include <lcd.h>
+   6          #include <keyb.h>
+   7          #include <UserIO.h>
+   8          
+   9          void Afisare_meniu(void);              // afisare meniu initial
+  10          void Afisare_mesaj(void);              // afisare mesaj receptionat
+  11          void Citire_mesaj(unsigned char i);       // preluare mesaj pentru a fi transmis catre nodul i
+  12          void Delay(int ms);                       // intarziere programabila
+  13          void Error(char *ptr);                 // afisare mesaj de eroare
+  14          
+  15          unsigned char TERM_Input(void);
+  16          unsigned char AFISARE = 1;
+  17          
+  18          extern unsigned char LCD_line,LCD_col;
+  19          
+  20          //********************************************************************************************************
+             -***
+  21          extern unsigned char ADR_MASTER;
+  22          extern unsigned char TIP_NOD;
+  23          extern unsigned char STARE_IO;
+  24          extern nod retea[];
+  25          
+  26          //********************************************************************************************************
+             -***
+  27          void UserIO(void){               // interfata cu utilizatorul
+  28   1         static unsigned char tasta, cmd, dest, lng;  // variabile locale statice
+  29   1         
+  30   1         if(0 == (tasta = TERM_Input())){
+  31   2            tasta = KEYB_Input();
+  32   2            if(tasta) LCD_Putch(tasta);
+  33   2         }
+  34   1         if(tasta){
+  35   2            switch(STARE_IO){
+  36   3               
+  37   3               case 0:  switch(tasta){
+  38   4                           case '1':                                       // afiseaza Tx Msg:> Nod = 
+  39   4                              
+  40   4                                                                           // blocheaza afisarea (AFISARE = 0)
+  41   4                                                                           // trece in starea 1
+  42   4                                                                           // comanda este '1'
+  43   4                                 break;
+  44   4                           
+  45   4                           case '2':                                       // afiseaza Stare Nod:
+  46   4                              
+  47   4                                                                           // blocheaza afisarea (AFISARE = 0)
+  48   4                                                                           // trece in starea 1
+  49   4                                 break;                                    // comanda este '2'
+  50   4                        }
+  51   3                        break;
+  52   3                                 
+C51 COMPILER V8.02   TERM_FSA                                                              03/05/2023 12:07:30 PAGE 2   
+
+  53   3               case 1:                                      // daca comanda e '1' si adresa e intre 0-4, mai putin adresa proprie
+  54   3                                                               // extrage dest din tasta
+  55   3                                                               // Daca este deja un mesaj in buffer ...
+  56   3                                                                  // afiseaza Buffer plin
+  57   3               
+  58   3                                                                  // trece in starea 0, s-a terminat tratarea comenzii '1'
+  59   3                                                                  // afisare meniu
+  60   3                                                                     
+  61   3                                                            // altfel ...
+  62   3                                                                  // daca nodul e master
+  63   3                                                                     // pune in bufferul dest adresa hw dest
+  64   3                                                                  
+  65   3                                                                     // pune in bufferul dest  adresa hw dest
+  66   3                              
+  67   3                                                                  // pune in bufferul dest  adresa nodului sursa
+  68   3                                                                  // pune in bufferul dest  adresa nodului destinatie
+  69   3                                                                  // cere introducerea mesajului
+  70   3               
+  71   3                                                                  // initializeaza lng = 0 
+  72   3                                                                  // trece in starea 2, sa astepte mesajul
+  73   3                                                         
+  74   3                                                      
+  75   3                                                            // daca comanda e '2' si adresa e intre 0-4
+  76   3                                                               // extrage dest din tasta
+  77   3                                                               // Daca este deja un mesaj in buffer ...
+  78   3                                                                  // Afiseaza Buffer plin
+  79   3                                                                  
+  80   3                                                               // altfel
+  81   3                                                                  // Afiseaza Buffer gol
+  82   3                                                                  
+  83   3                                                               // trece in starea 0, s-a terminat tratarea comenzii
+  84   3                                                               // afisare meniu
+  85   3                        break;
+  86   3            
+  87   3               case 2:                                      // daca tasta e diferita de CR ('\r' si de '*' si nu s-a ajuns la limita maxima a b
+             -ufferului de caractere
+  88   3                                                               // stocheaza codul tastei apasate in bufferul de date si incrementeaza lng
+  89   3                                                            // daca s-a atins nr maxim de caractere sau s-a apasat Enter ('\r') sau '*'
+  90   3                                                               // stocheaza lng
+  91   3                                                               // pune in bufbin tipul mesajului (USER_MES)
+  92   3                                                               // marcheaza buffer plin
+  93   3                                                               // trece in starea 0, s-a terminat tratarea comenzii
+  94   3                                                               // afisare meniu
+  95   3         
+  96   3                        break;   
+  97   3         
+  98   3            }
+  99   2         }
+ 100   1      }
+*** WARNING C280 IN LINE 28 OF TERM-FSA.C: 'cmd': unreferenced local variable
+*** WARNING C280 IN LINE 28 OF TERM-FSA.C: 'dest': unreferenced local variable
+*** WARNING C280 IN LINE 28 OF TERM-FSA.C: 'lng': unreferenced local variable
+ 101          
+ 102          //********************************************************************************************************
+             -***
+ 103          void Afisare_meniu(void){                    // afisare meniu initial
+ 104   1         AFISARE = 1;
+ 105   1         UART0_Putstr("\n\rTema ");
+ 106   1         LCD_PutStr(0,0,"T");
+ 107   1         UART0_Putch(TEMA + '0');
+ 108   1         LCD_Putch(TEMA + '0');
+ 109   1         
+C51 COMPILER V8.02   TERM_FSA                                                              03/05/2023 12:07:30 PAGE 3   
+
+ 110   1      #if(PROTOCOL == MS)
+ 111   1         if(TIP_NOD == MASTER){
+ 112   2            UART0_Putstr(" Master ");  // daca programul se executa pe nodul master
+ 113   2            LCD_PutStr(LCD_line, LCD_col, " Master:");
+ 114   2         }
+ 115   1         else{ 
+ 116   2            UART0_Putstr(" Slave ");                  // daca programul se executa pe un nod slave
+ 117   2            LCD_PutStr(LCD_line, LCD_col, " Slave:");
+ 118   2         }
+ 119   1      #elif(PROTOCOL == JETON)
+                 if(TIP_NOD == JETON){
+                    UART0_Putstr(" Jeton ");
+                    LCD_Putstr(LCD_line, LCD_col, " Jeton:");
+                 }
+                 else{
+                    UART0_Putstr(" NoJet ");
+                    LCD_Putstr(LCD_line, LCD_col, "NoJet:");
+                 }
+              #endif
+ 129   1         
+ 130   1         UART0_Putch(ADR_NOD + '0');                  // afiseaza adresa nodului
+ 131   1         LCD_Putch(ADR_NOD + '0');
+ 132   1      #if(TEMA == 1 || TEMA == 3)
+ 133   1         UART0_Putstr(":ASC" );                       // afiseaza parametrii specifici temei
+ 134   1         LCD_PutStr(LCD_line, LCD_col, " ASC");
+ 135   1      #elif(TEMA == 2 || TEMA == 4)
+                 UART0_Putstr(":BIN" );
+                 LCD_PutStr(LCD_line, LCD_col, " BIN");
+              #endif
+ 139   1         UART0_Putstr("\n\r> 1-TxM 2-Stare :>");   // meniul de comenzi
+ 140   1         LCD_PutStr(1,0, "1-TxM 2-Stare :>");
+ 141   1      }
+ 142          
+ 143          
+ 144          //********************************************************************************************************
+             -***
+ 145          void Afisare_mesaj(void){              // afisare mesaj din bufferul de receptie i
+ 146   1         unsigned char j, lng, *ptr;
+ 147   1         if(retea[ADR_NOD].full){                  // exista mesaj in bufferul de receptie?
+ 148   2            lng = retea[ADR_NOD].bufbin.lng;
+ 149   2            UART0_Putstr("\n\r>Rx: De la nodul ");
+ 150   2            LCD_DelLine(1);
+ 151   2            LCD_PutStr(1,0, "Rx: ");      
+ 152   2            UART0_Putch(retea[ADR_NOD].bufbin.src + '0');         // afiseaza adresa nodului sursa al mesajului
+ 153   2            LCD_Putch(retea[ADR_NOD].bufbin.src + '0');
+ 154   2            
+ 155   2            UART0_Putstr(": ");
+ 156   2            LCD_PutStr(LCD_line, LCD_col, ">: ");  
+ 157   2            
+ 158   2            for(j = 0, ptr = retea[ADR_NOD].bufbin.date; j < lng; j++) UART0_Putch(*ptr++);  // afiseaza mesajul, car
+             -acter cu caracter
+ 159   2            for(j = 0, ptr = retea[ADR_NOD].bufbin.date; j < lng; j++) LCD_Putch(*ptr++);    // afiseaza mesajul, cara
+             -cter cu caracter
+ 160   2      
+ 161   2            retea[ADR_NOD].full = 0;               // mesajul a fost afisat, marcheaza buffer gol
+ 162   2         }
+ 163   1      }
+ 164          
+ 165          //********************************************************************************************************
+             -***
+ 166          void Error(char *ptr){
+ 167   1         if(AFISARE){
+C51 COMPILER V8.02   TERM_FSA                                                              03/05/2023 12:07:30 PAGE 4   
+
+ 168   2            UART0_Putstr(ptr);
+ 169   2            LCD_DelLine(1);
+ 170   2            LCD_PutStr(1,0, ptr+2);
+ 171   2         }
+ 172   1      }
+ 173          
+ 174          unsigned char TERM_Input(void){
+ 175   1      
+ 176   1         unsigned char ch, SFRPAGE_save = SFRPAGE;
+ 177   1         
+ 178   1         SFRPAGE = LEGACY_PAGE;
+ 179   1         
+ 180   1         ch = 0;
+ 181   1         if(RI0) ch = UART0_Getch(1);
+ 182   1         
+ 183   1         SFRPAGE = SFRPAGE_save;
+ 184   1         
+ 185   1         return ch;
+ 186   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    503    ----
+   CONSTANT SIZE    =    124    ----
+   XDATA SIZE       =      5       9
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  3 WARNING(S),  0 ERROR(S)
